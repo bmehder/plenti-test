@@ -1,13 +1,19 @@
 <nav>
   <div class="container">
-    <span id="brand"><a href="/"><img alt="planarian" src="/assets/logo.svg" />Home</a></span>
-    <a href="/about">About</a>&nbsp;
+    <span id="brand"
+      ><a href="/"><img alt="planarian" src="/assets/logo.svg" />Home</a></span
+    >
+    <a href="/about">About</a>
+    <a href="/services">Services</a>
     <a href="/contact">Contact</a>
   </div>
 </nav>
 
 <style>
-  nav, .container, #brand, #brand a {
+  nav,
+  .container,
+  #brand,
+  #brand a {
     display: flex;
   }
   nav {

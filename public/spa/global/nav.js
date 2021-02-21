@@ -31,6 +31,9 @@ function create_fragment(ctx) {
 	let t3;
 	let a2;
 	let t4;
+	let t5;
+	let a3;
+	let t6;
 
 	return {
 		c() {
@@ -43,9 +46,12 @@ function create_fragment(ctx) {
 			t1 = space();
 			a1 = element("a");
 			t2 = text("About");
-			t3 = text(" \n    ");
+			t3 = space();
 			a2 = element("a");
-			t4 = text("Contact");
+			t4 = text("Services");
+			t5 = space();
+			a3 = element("a");
+			t6 = text("Contact");
 			this.h();
 		},
 		l(nodes) {
@@ -66,11 +72,16 @@ function create_fragment(ctx) {
 			var a1_nodes = children(a1);
 			t2 = claim_text(a1_nodes, "About");
 			a1_nodes.forEach(detach);
-			t3 = claim_text(div_nodes, " \n    ");
+			t3 = claim_space(div_nodes);
 			a2 = claim_element(div_nodes, "A", { href: true, class: true });
 			var a2_nodes = children(a2);
-			t4 = claim_text(a2_nodes, "Contact");
+			t4 = claim_text(a2_nodes, "Services");
 			a2_nodes.forEach(detach);
+			t5 = claim_space(div_nodes);
+			a3 = claim_element(div_nodes, "A", { href: true, class: true });
+			var a3_nodes = children(a3);
+			t6 = claim_text(a3_nodes, "Contact");
+			a3_nodes.forEach(detach);
 			div_nodes.forEach(detach);
 			nav_nodes.forEach(detach);
 			this.h();
@@ -78,17 +89,19 @@ function create_fragment(ctx) {
 		h() {
 			attr(img, "alt", "planarian");
 			if (img.src !== (img_src_value = "/assets/logo.svg")) attr(img, "src", img_src_value);
-			attr(img, "class", "svelte-1nwrdwq");
+			attr(img, "class", "svelte-yrta98");
 			attr(a0, "href", "/");
-			attr(a0, "class", "svelte-1nwrdwq");
+			attr(a0, "class", "svelte-yrta98");
 			attr(span, "id", "brand");
-			attr(span, "class", "svelte-1nwrdwq");
+			attr(span, "class", "svelte-yrta98");
 			attr(a1, "href", "/about");
-			attr(a1, "class", "svelte-1nwrdwq");
-			attr(a2, "href", "/contact");
-			attr(a2, "class", "svelte-1nwrdwq");
-			attr(div, "class", "container svelte-1nwrdwq");
-			attr(nav, "class", "svelte-1nwrdwq");
+			attr(a1, "class", "svelte-yrta98");
+			attr(a2, "href", "/services");
+			attr(a2, "class", "svelte-yrta98");
+			attr(a3, "href", "/contact");
+			attr(a3, "class", "svelte-yrta98");
+			attr(div, "class", "container svelte-yrta98");
+			attr(nav, "class", "svelte-yrta98");
 		},
 		m(target, anchor) {
 			insert(target, nav, anchor);
@@ -103,6 +116,9 @@ function create_fragment(ctx) {
 			append(div, t3);
 			append(div, a2);
 			append(a2, t4);
+			append(div, t5);
+			append(div, a3);
+			append(a3, t6);
 		},
 		p: noop,
 		i: noop,

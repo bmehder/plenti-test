@@ -24,6 +24,7 @@
     flex: 1;
   }
   a {
+    padding: 0 1em;
     align-self: center;
     align-items: center;
     color: var(--base-dark);

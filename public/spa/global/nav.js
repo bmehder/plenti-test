@@ -89,19 +89,19 @@ function create_fragment(ctx) {
 		h() {
 			attr(img, "alt", "planarian");
 			if (img.src !== (img_src_value = "/assets/logo.svg")) attr(img, "src", img_src_value);
-			attr(img, "class", "svelte-yrta98");
+			attr(img, "class", "svelte-z5b4vn");
 			attr(a0, "href", "/");
-			attr(a0, "class", "svelte-yrta98");
+			attr(a0, "class", "svelte-z5b4vn");
 			attr(span, "id", "brand");
-			attr(span, "class", "svelte-yrta98");
+			attr(span, "class", "svelte-z5b4vn");
 			attr(a1, "href", "/about");
-			attr(a1, "class", "svelte-yrta98");
+			attr(a1, "class", "svelte-z5b4vn");
 			attr(a2, "href", "/services");
-			attr(a2, "class", "svelte-yrta98");
+			attr(a2, "class", "svelte-z5b4vn");
 			attr(a3, "href", "/contact");
-			attr(a3, "class", "svelte-yrta98");
-			attr(div, "class", "container svelte-yrta98");
-			attr(nav, "class", "svelte-yrta98");
+			attr(a3, "class", "svelte-z5b4vn");
+			attr(div, "class", "container svelte-z5b4vn");
+			attr(nav, "class", "svelte-z5b4vn");
 		},
 		m(target, anchor) {
 			insert(target, nav, anchor);

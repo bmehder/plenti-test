@@ -115,7 +115,7 @@ const contentSource = [{
 "fields": {
 	"title": "Services",
 	"description": [
-		"We offer bare service for all the mandem."
+		"We offer bare service for all the mandem (and galdem)."
 	],
 	"author": "Jim Fisk"
 }

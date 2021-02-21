@@ -16290,7 +16290,422 @@ class AwaitBlockBranch extends Wrapper {
         this.var = null;
         this.status = status;
         this.block = block.child({
-            comment: create_debugging_                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                bling);
+            comment: create_debugging_comment(node, this.renderer.component),
+            name: this.renderer.component.get_unique_name(`create_${status}_block`),
+            type: status
+        });
+        this.add_context(parent.node[status + '_node'], parent.node[status + '_contexts']);
+        this.fragment = new FragmentWrapper(renderer, this.block, this.node.children, parent, strip_whitespace, next_sibling);
+        this.is_dynamic = this.block.dependencies.size > 0;
+    }
+    add_context(node, contexts) {
+        if (!node)
+            return;
+        if (node.type === 'Identifier') {
+            this.value = node.name;
+            this.renderer.add_to_context(this.value, true);
+        }
+        else {
+            contexts.forEach(context => {
+                this.renderer.add_to_context(context.key.name, true);
+            });
+            this.value = this.block.parent.get_unique_name('value').name;
+            this.value_contexts = contexts;
+            this.renderer.add_to_context(this.value, true);
+            this.is_destructured = true;
+        }
+        this.value_index = this.renderer.context_lookup.get(this.value).index;
+    }
+    render(block, parent_node, parent_nodes) {
+        this.fragment.render(block, parent_node, parent_nodes);
+        if (this.is_destructured) {
+            this.render_destructure();
+        }
+    }
+    render_destructure() {
+        const props = this.value_contexts.map(prop => b `#ctx[${this.block.renderer.context_lookup.get(prop.key.name).index}] = ${prop.modifier(x `#ctx[${this.value_index}]`)};`);
+        const get_context = this.block.renderer.component.get_unique_name(`get_${this.status}_context`);
+        this.block.renderer.blocks.push(b `
+			function ${get_context}(#ctx) {
+				${props}
+			}
+		`);
+        this.block.chunks.declarations.push(b `${get_context}(#ctx)`);
+        if (this.block.has_update_method) {
+            this.block.chunks.update.unshift(b `${get_context}(#ctx)`);
+        }
+    }
+}
+class AwaitBlockWrapper extends Wrapper {
+    constructor(renderer, block, parent, node, strip_whitespace, next_sibling) {
+        super(renderer, block, parent, node);
+        this.var = { type: 'Identifier', name: 'await_block' };
+        this.cannot_use_innerhtml();
+        this.not_static_content();
+        block.add_dependencies(this.node.expression.dependencies);
+        let is_dynamic = false;
+        let has_intros = false;
+        let has_outros = false;
+        ['pending', 'then', 'catch'].forEach((status) => {
+            const child = this.node[status];
+            const branch = new AwaitBlockBranch(status, renderer, block, this, child, strip_whitespace, next_sibling);
+            renderer.blocks.push(branch.block);
+            if (branch.is_dynamic) {
+                is_dynamic = true;
+                // TODO should blocks update their own parents?
+                block.add_dependencies(branch.block.dependencies);
+            }
+            if (branch.block.has_intros)
+                has_intros = true;
+            if (branch.block.has_outros)
+                has_outros = true;
+            this[status] = branch;
+        });
+        ['pending', 'then', 'catch'].forEach(status => {
+            this[status].block.has_update_method = is_dynamic;
+            this[status].block.has_intro_method = has_intros;
+            this[status].block.has_outro_method = has_outros;
+        });
+        if (has_outros) {
+            block.add_outro();
+        }
+    }
+    render(block, parent_node, parent_nodes) {
+        const anchor = this.get_or_create_anchor(block, parent_node, parent_nodes);
+        const update_mount_node = this.get_update_mount_node(anchor);
+        const snippet = this.node.expression.manipulate(block);
+        const info = block.get_unique_name('info');
+        const promise = block.get_unique_name('promise');
+        block.add_variable(promise);
+        block.maintain_context = true;
+        const info_props = x `{
+			ctx: #ctx,
+			current: null,
+			token: null,
+			hasCatch: ${this.catch.node.start !== null ? 'true' : 'false'},
+			pending: ${this.pending.block.name},
+			then: ${this.then.block.name},
+			catch: ${this.catch.block.name},
+			value: ${this.then.value_index},
+			error: ${this.catch.value_index},
+			blocks: ${this.pending.block.has_outro_method && x `[,,,]`}
+		}`;
+        block.chunks.init.push(b `
+			let ${info} = ${info_props};
+		`);
+        block.chunks.init.push(b `
+			@handle_promise(${promise} = ${snippet}, ${info});
+		`);
+        block.chunks.create.push(b `
+			${info}.block.c();
+		`);
+        if (parent_nodes && this.renderer.options.hydratable) {
+            block.chunks.claim.push(b `
+				${info}.block.l(${parent_nodes});
+			`);
+        }
+        const initial_mount_node = parent_node || '#target';
+        const anchor_node = parent_node ? 'null' : '#anchor';
+        const has_transitions = this.pending.block.has_intro_method || this.pending.block.has_outro_method;
+        block.chunks.mount.push(b `
+			${info}.block.m(${initial_mount_node}, ${info}.anchor = ${anchor_node});
+			${info}.mount = () => ${update_mount_node};
+			${info}.anchor = ${anchor};
+		`);
+        if (has_transitions) {
+            block.chunks.intro.push(b `@transition_in(${info}.block);`);
+        }
+        const dependencies = this.node.expression.dynamic_dependencies();
+        let update_child_context;
+        if (this.then.value && this.catch.value) {
+            update_child_context = b `#child_ctx[${this.then.value_index}] = #child_ctx[${this.catch.value_index}] = ${info}.resolved;`;
+        }
+        else if (this.then.value) {
+            update_child_context = b `#child_ctx[${this.then.value_index}] = ${info}.resolved;`;
+        }
+        else if (this.catch.value) {
+            update_child_context = b `#child_ctx[${this.catch.value_index}] = ${info}.resolved;`;
+        }
+        if (dependencies.length > 0) {
+            const condition = x `
+				${block.renderer.dirty(dependencies)} &&
+				${promise} !== (${promise} = ${snippet}) &&
+				@handle_promise(${promise}, ${info})`;
+            block.chunks.update.push(b `${info}.ctx = #ctx;`);
+            if (this.pending.block.has_update_method) {
+                block.chunks.update.push(b `
+					if (${condition}) {
+
+					} else {
+						const #child_ctx = #ctx.slice();
+						${update_child_context}
+						${info}.block.p(#child_ctx, #dirty);
+					}
+				`);
+            }
+            else {
+                block.chunks.update.push(b `
+					${condition}
+				`);
+            }
+        }
+        else {
+            if (this.pending.block.has_update_method) {
+                block.chunks.update.push(b `
+					{
+						const #child_ctx = #ctx.slice();
+						${update_child_context}
+						${info}.block.p(#child_ctx, #dirty);
+					}
+				`);
+            }
+        }
+        if (this.pending.block.has_outro_method) {
+            block.chunks.outro.push(b `
+				for (let #i = 0; #i < 3; #i += 1) {
+					const block = ${info}.blocks[#i];
+					@transition_out(block);
+				}
+			`);
+        }
+        block.chunks.destroy.push(b `
+			${info}.block.d(${parent_node ? null : 'detaching'});
+			${info}.token = null;
+			${info} = null;
+		`);
+        [this.pending, this.then, this.catch].forEach(branch => {
+            branch.render(branch.block, null, x `#nodes`);
+        });
+    }
+}
+
+const TRUE = x `true`;
+const FALSE = x `false`;
+class EventHandlerWrapper {
+    constructor(node, parent) {
+        this.node = node;
+        this.parent = parent;
+        if (!node.expression) {
+            this.parent.renderer.add_to_context(node.handler_name.name);
+            this.parent.renderer.component.partly_hoisted.push(b `
+				function ${node.handler_name.name}(event) {
+					@bubble($$self, event);
+				}
+			`);
+        }
+    }
+    get_snippet(block) {
+        const snippet = this.node.expression ? this.node.expression.manipulate(block) : block.renderer.reference(this.node.handler_name);
+        if (this.node.reassigned) {
+            block.maintain_context = true;
+            return x `function () { if (@is_function(${snippet})) ${snippet}.apply(this, arguments); }`;
+        }
+        return snippet;
+    }
+    render(block, target) {
+        let snippet = this.get_snippet(block);
+        if (this.node.modifiers.has('preventDefault'))
+            snippet = x `@prevent_default(${snippet})`;
+        if (this.node.modifiers.has('stopPropagation'))
+            snippet = x `@stop_propagation(${snippet})`;
+        if (this.node.modifiers.has('self'))
+            snippet = x `@self(${snippet})`;
+        const args = [];
+        const opts = ['nonpassive', 'passive', 'once', 'capture'].filter(mod => this.node.modifiers.has(mod));
+        if (opts.length) {
+            if (opts.length === 1 && opts[0] === 'capture') {
+                args.push(TRUE);
+            }
+            else {
+                args.push(x `{ ${opts.map(opt => opt === 'nonpassive'
+                    ? p `passive: false`
+                    : p `${opt}: true`)} }`);
+            }
+        }
+        else if (block.renderer.options.dev) {
+            args.push(FALSE);
+        }
+        if (block.renderer.options.dev) {
+            args.push(this.node.modifiers.has('preventDefault') ? TRUE : FALSE);
+            args.push(this.node.modifiers.has('stopPropagation') ? TRUE : FALSE);
+        }
+        block.event_listeners.push(x `@listen(${target}, "${this.node.name}", ${snippet}, ${args})`);
+    }
+}
+
+function add_event_handlers(block, target, handlers) {
+    handlers.forEach(handler => add_event_handler(block, target, handler));
+}
+function add_event_handler(block, target, handler) {
+    handler.render(block, target);
+}
+
+class BodyWrapper extends Wrapper {
+    constructor(renderer, block, parent, node) {
+        super(renderer, block, parent, node);
+        this.handlers = this.node.handlers.map(handler => new EventHandlerWrapper(handler, this));
+    }
+    render(block, _parent_node, _parent_nodes) {
+        add_event_handlers(block, x `@_document.body`, this.handlers);
+    }
+}
+
+function add_to_set(a, b) {
+    // @ts-ignore
+    b.forEach(item => {
+        a.add(item);
+    });
+}
+
+class DebugTagWrapper extends Wrapper {
+    constructor(renderer, block, parent, node, _strip_whitespace, _next_sibling) {
+        super(renderer, block, parent, node);
+    }
+    render(block, _parent_node, _parent_nodes) {
+        const { renderer } = this;
+        const { component } = renderer;
+        if (!renderer.options.dev)
+            return;
+        const { var_lookup } = component;
+        const start = component.locate(this.node.start + 1);
+        const end = { line: start.line, column: start.column + 6 };
+        const loc = { start, end };
+        const debug = {
+            type: 'DebuggerStatement',
+            loc
+        };
+        if (this.node.expressions.length === 0) {
+            // Debug all
+            block.chunks.create.push(debug);
+            block.chunks.update.push(debug);
+        }
+        else {
+            const log = {
+                type: 'Identifier',
+                name: 'log',
+                loc
+            };
+            const dependencies = new Set();
+            this.node.expressions.forEach(expression => {
+                add_to_set(dependencies, expression.dependencies);
+            });
+            const contextual_identifiers = this.node.expressions
+                .filter(e => {
+                const variable = var_lookup.get(e.node.name);
+                return !(variable && variable.hoistable);
+            })
+                .map(e => e.node.name);
+            const logged_identifiers = this.node.expressions.map(e => p `${e.node.name}`);
+            const debug_statements = b `
+				${contextual_identifiers.map(name => b `const ${name} = ${renderer.reference(name)};`)}
+				@_console.${log}({ ${logged_identifiers} });
+				debugger;`;
+            if (dependencies.size) {
+                const condition = renderer.dirty(Array.from(dependencies));
+                block.chunks.update.push(b `
+					if (${condition}) {
+						${debug_statements}
+					}
+				`);
+            }
+            block.chunks.create.push(b `{
+				${debug_statements}
+			}`);
+        }
+    }
+}
+
+function get_object(node) {
+    while (node.type === 'MemberExpression')
+        node = node.object;
+    return node;
+}
+
+class ElseBlockWrapper extends Wrapper {
+    constructor(renderer, block, parent, node, strip_whitespace, next_sibling) {
+        super(renderer, block, parent, node);
+        this.var = null;
+        this.block = block.child({
+            comment: create_debugging_comment(node, this.renderer.component),
+            name: this.renderer.component.get_unique_name('create_else_block'),
+            type: 'else'
+        });
+        this.fragment = new FragmentWrapper(renderer, this.block, this.node.children, parent, strip_whitespace, next_sibling);
+        this.is_dynamic = this.block.dependencies.size > 0;
+    }
+}
+class EachBlockWrapper extends Wrapper {
+    constructor(renderer, block, parent, node, strip_whitespace, next_sibling) {
+        super(renderer, block, parent, node);
+        this.updates = [];
+        this.var = { type: 'Identifier', name: 'each' };
+        this.cannot_use_innerhtml();
+        this.not_static_content();
+        const { dependencies } = node.expression;
+        block.add_dependencies(dependencies);
+        this.node.contexts.forEach(context => {
+            renderer.add_to_context(context.key.name, true);
+        });
+        this.block = block.child({
+            comment: create_debugging_comment(this.node, this.renderer.component),
+            name: renderer.component.get_unique_name('create_each_block'),
+            type: 'each',
+            // @ts-ignore todo: probably error
+            key: node.key,
+            bindings: new Map(block.bindings)
+        });
+        // TODO this seems messy
+        this.block.has_animation = this.node.has_animation;
+        this.index_name = this.node.index
+            ? { type: 'Identifier', name: this.node.index }
+            : renderer.component.get_unique_name(`${this.node.context}_index`);
+        const fixed_length = node.expression.node.type === 'ArrayExpression' &&
+            node.expression.node.elements.every(element => element.type !== 'SpreadElement')
+            ? node.expression.node.elements.length
+            : null;
+        // hack the sourcemap, so that if data is missing the bug
+        // is easy to find
+        let c = this.node.start + 2;
+        while (renderer.component.source[c] !== 'e')
+            c += 1;
+        const start = renderer.component.locate(c);
+        const end = { line: start.line, column: start.column + 4 };
+        const length = {
+            type: 'Identifier',
+            name: 'length',
+            loc: { start, end }
+        };
+        const each_block_value = renderer.component.get_unique_name(`${this.var.name}_value`);
+        const iterations = block.get_unique_name(`${this.var.name}_blocks`);
+        renderer.add_to_context(each_block_value.name, true);
+        renderer.add_to_context(this.index_name.name, true);
+        this.vars = {
+            create_each_block: this.block.name,
+            each_block_value,
+            get_each_context: renderer.component.get_unique_name(`get_${this.var.name}_context`),
+            iterations,
+            // optimisation for array literal
+            fixed_length,
+            data_length: fixed_length === null ? x `${each_block_value}.${length}` : fixed_length,
+            view_length: fixed_length === null ? x `${iterations}.length` : fixed_length
+        };
+        const object = get_object(node.expression.node);
+        const store = object.type === 'Identifier' && object.name[0] === '$' ? object.name.slice(1) : null;
+        node.contexts.forEach(prop => {
+            this.block.bindings.set(prop.key.name, {
+                object: this.vars.each_block_value,
+                property: this.index_name,
+                modifier: prop.modifier,
+                snippet: prop.modifier(x `${this.vars.each_block_value}[${this.index_name}]`),
+                store,
+                tail: prop.modifier(x `[${this.index_name}]`)
+            });
+        });
+        if (this.node.index) {
+            this.block.get_unique_name(this.node.index); // this prevents name collisions (#1254)
+        }
+        renderer.blocks.push(this.block);
+        this.fragment = new FragmentWrapper(renderer, this.block, node.children, this, strip_whitespace, next_sibling);
         if (this.node.else) {
             this.else = new ElseBlockWrapper(renderer, block, this, this.node.else, strip_whitespace, next_sibling);
             renderer.blocks.push(this.else.block);
